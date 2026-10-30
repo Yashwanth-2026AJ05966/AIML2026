@@ -1,0 +1,347 @@
+{
+  "version": 1,
+  "training_rows": 784,
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "stratify": "price_category"
+  },
+  "feature_order": [
+    "brand_name",
+    "rating",
+    "has_5g",
+    "has_nfc",
+    "has_ir_blaster",
+    "processor_brand",
+    "num_cores",
+    "processor_speed",
+    "battery_capacity",
+    "fast_charging_available",
+    "fast_charging",
+    "ram_capacity",
+    "internal_memory",
+    "screen_size",
+    "refresh_rate",
+    "num_rear_cameras",
+    "num_front_cameras",
+    "os",
+    "primary_camera_rear",
+    "primary_camera_front",
+    "extended_memory_available",
+    "extended_upto",
+    "resolution_width",
+    "resolution_height"
+  ],
+  "features": {
+    "brand_name": {
+      "label": "Brand",
+      "group": "Identity and Platform",
+      "raw_dtype": "object",
+      "type": "category",
+      "choices": [
+        "apple",
+        "asus",
+        "blackview",
+        "blu",
+        "cat",
+        "cola",
+        "doogee",
+        "gionee",
+        "google",
+        "honor",
+        "huawei",
+        "ikall",
+        "infinix",
+        "iqoo",
+        "itel",
+        "jio",
+        "lava",
+        "leitz",
+        "lenovo",
+        "letv",
+        "lg",
+        "lyf",
+        "micromax",
+        "motorola",
+        "nokia",
+        "nothing",
+        "nubia",
+        "oneplus",
+        "oppo",
+        "oukitel",
+        "poco",
+        "realme",
+        "redmi",
+        "royole",
+        "samsung",
+        "sharp",
+        "sony",
+        "tcl",
+        "tecno",
+        "tesla",
+        "vertu",
+        "vivo",
+        "xiaomi",
+        "zte"
+      ],
+      "default": "xiaomi"
+    },
+    "rating": {
+      "label": "Specification Rating",
+      "group": "Identity and Platform",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 60,
+      "max": 89,
+      "default": 80
+    },
+    "has_5g": {
+      "label": "5G",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "bool",
+      "type": "boolean",
+      "default": true
+    },
+    "has_nfc": {
+      "label": "NFC",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "bool",
+      "type": "boolean",
+      "default": false
+    },
+    "has_ir_blaster": {
+      "label": "IR Blaster",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "bool",
+      "type": "boolean",
+      "default": false
+    },
+    "processor_brand": {
+      "label": "Processor Brand",
+      "group": "Processor and Memory",
+      "raw_dtype": "object",
+      "type": "category",
+      "choices": [
+        "bionic",
+        "dimensity",
+        "exynos",
+        "fusion",
+        "google",
+        "helio",
+        "kirin",
+        "sc9863a",
+        "snapdragon",
+        "spreadtrum",
+        "tiger",
+        "unisoc"
+      ],
+      "default": "snapdragon"
+    },
+    "num_cores": {
+      "label": "Processor Cores",
+      "group": "Processor and Memory",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 4,
+      "max": 8,
+      "default": 8,
+      "choices": [
+        4,
+        6,
+        8
+      ]
+    },
+    "processor_speed": {
+      "label": "Processor Speed (GHz)",
+      "group": "Processor and Memory",
+      "raw_dtype": "float64",
+      "type": "number",
+      "min": 1.2,
+      "max": 3.22,
+      "default": 2.3
+    },
+    "battery_capacity": {
+      "label": "Battery Capacity (mAh)",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 1821,
+      "max": 21000,
+      "default": 5000
+    },
+    "fast_charging_available": {
+      "label": "Fast Charging Available",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "int64",
+      "type": "boolean",
+      "default": true
+    },
+    "fast_charging": {
+      "label": "Fast Charging (W)",
+      "group": "Battery and Connectivity",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 10,
+      "max": 240,
+      "default": 33
+    },
+    "ram_capacity": {
+      "label": "RAM (GB)",
+      "group": "Processor and Memory",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 1,
+      "max": 18,
+      "default": 8,
+      "choices": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        8,
+        12,
+        16,
+        18
+      ]
+    },
+    "internal_memory": {
+      "label": "Internal Storage (GB)",
+      "group": "Processor and Memory",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 8,
+      "max": 1024,
+      "default": 128,
+      "choices": [
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024
+      ]
+    },
+    "screen_size": {
+      "label": "Screen Size (inches)",
+      "group": "Display",
+      "raw_dtype": "float64",
+      "type": "number",
+      "min": 4.0,
+      "max": 8.03,
+      "default": 6.575
+    },
+    "refresh_rate": {
+      "label": "Refresh Rate (Hz)",
+      "group": "Display",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 60,
+      "max": 240,
+      "default": 60,
+      "choices": [
+        60,
+        90,
+        120,
+        144,
+        165,
+        240
+      ]
+    },
+    "num_rear_cameras": {
+      "label": "Rear Camera Count",
+      "group": "Cameras",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 1,
+      "max": 4,
+      "default": 3,
+      "choices": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "num_front_cameras": {
+      "label": "Front Camera Count",
+      "group": "Cameras",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 1,
+      "max": 2,
+      "default": 1,
+      "choices": [
+        1,
+        2
+      ]
+    },
+    "os": {
+      "label": "Operating System",
+      "group": "Identity and Platform",
+      "raw_dtype": "object",
+      "type": "category",
+      "choices": [
+        "android",
+        "ios",
+        "other"
+      ],
+      "default": "android"
+    },
+    "primary_camera_rear": {
+      "label": "Primary Rear Camera (MP)",
+      "group": "Cameras",
+      "raw_dtype": "float64",
+      "type": "number",
+      "min": 2.0,
+      "max": 200.0,
+      "default": 50.0
+    },
+    "primary_camera_front": {
+      "label": "Primary Front Camera (MP)",
+      "group": "Cameras",
+      "raw_dtype": "float64",
+      "type": "number",
+      "min": 0.3,
+      "max": 60.0,
+      "default": 16.0
+    },
+    "extended_memory_available": {
+      "label": "Expandable Storage Available",
+      "group": "Processor and Memory",
+      "raw_dtype": "int64",
+      "type": "boolean",
+      "default": true
+    },
+    "extended_upto": {
+      "label": "Expandable Storage Limit (GB)",
+      "group": "Processor and Memory",
+      "raw_dtype": "float64",
+      "type": "integer",
+      "min": 32,
+      "max": 2048,
+      "default": 1024
+    },
+    "resolution_width": {
+      "label": "Resolution Width (pixels)",
+      "group": "Display",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 480,
+      "max": 2460,
+      "default": 1080
+    },
+    "resolution_height": {
+      "label": "Resolution Height (pixels)",
+      "group": "Display",
+      "raw_dtype": "int64",
+      "type": "integer",
+      "min": 480,
+      "max": 3840,
+      "default": 2400
+    }
+  },
+  "source_sha256": "124f60822cb814a903dcd74ca59c81c074a19da0a97ea99566851dbcbde35bea"
+}

@@ -133,12 +133,103 @@ class AssignmentTests(unittest.TestCase):
             with self.subTest(model=name):
                 app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
                 self.assertFalse(app.exception)
-                app.sidebar.selectbox[0].select(name)
+                app.sidebar.radio[0].set_value(name)
+                app.button(key="generate_classifier").click()
                 with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
                     app.run()
                 self.assertFalse(app.exception)
                 self.assertFalse(app.error)
                 self.assertEqual([metric.label for metric in app.metric], METRIC_NAMES)
+                self.assertEqual(len(app.dataframe[0].value), len(self.export))
+                comparison = app.dataframe[1].value
+                self.assertEqual(len(app.dataframe), 2)
+                self.assertFalse(any(heading.value == "Model Comparison on Uploaded Data" for heading in app.subheader))
+                self.assertEqual(len(comparison), len(self.export))
+                self.assertEqual(comparison["CSV Row"].tolist(), list(range(2, len(self.export) + 2)))
+                self.assertIn("Brand", comparison.columns)
+                self.assertIn("RAM (GB)", comparison.columns)
+                self.assertIn("Storage (GB)", comparison.columns)
+                expected_results = np.where(comparison["Actual Price Category"] ==
+                                            comparison["Predicted Price Category"], "Correct", "Incorrect")
+                self.assertEqual(comparison["Result"].tolist(), expected_results.tolist())
+                probability = self.models[name].predict_proba(self.export.drop(columns="price_category"))
+                class_indices = {category: index for index, category in enumerate(self.models[name].classes_)}
+                expected_probability = [100 * probability[index, class_indices[category]]
+                                        for index, category in enumerate(comparison["Predicted Price Category"])]
+                np.testing.assert_allclose(comparison["Predicted Category Probability (%)"], expected_probability)
+                for selection, result in [("Incorrect only", "Incorrect"), ("Correct only", "Correct")]:
+                    app.radio(key="prediction_results").set_value(selection)
+                    with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+                        app.run()
+                    self.assertFalse(app.exception)
+                    filtered = app.dataframe[1].value
+                    self.assertTrue((filtered["Result"] == result).all())
+                    self.assertEqual(len(filtered), int((comparison["Result"] == result).sum()))
+                app.button(key="show_model_comparison").click()
+                with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+                    app.run()
+                self.assertFalse(app.exception)
+                self.assertEqual(len(app.dataframe), 1)
+                self.assertEqual(len(app.metric), 0)
+                self.assertIsNone(app.sidebar.radio[0].value)
+                self.assertFalse(any(heading.value == "Actual and Predicted Categories" for heading in app.subheader))
+                model_comparison = app.dataframe[0].value
+                self.assertEqual(list(model_comparison.columns), ["Model", *METRIC_NAMES])
+                self.assertEqual(model_comparison["Model"].tolist(), list(MODEL_FILES))
+                for compared_name, compared_pipeline in self.models.items():
+                    features = self.export.drop(columns="price_category")
+                    expected_metrics, _ = calculate_metrics(
+                        self.export["price_category"], compared_pipeline.predict(features),
+                        compared_pipeline.predict_proba(features), compared_pipeline.classes_,
+                    )
+                    np.testing.assert_allclose(
+                        model_comparison.set_index("Model").loc[compared_name, METRIC_NAMES].astype(float),
+                        [expected_metrics[metric] for metric in METRIC_NAMES],
+                    )
+                app.sidebar.radio[0].set_value(name)
+                app.button(key="generate_classifier").click()
+                with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+                    app.run()
+                self.assertFalse(app.exception)
+                self.assertEqual(len(app.dataframe), 2)
+                self.assertEqual(len(app.metric), 6)
+                self.assertTrue(any(heading.value == f"Evaluation Metrics: {name}" for heading in app.subheader))
+
+    def test_streamlit_comparison_uses_upload_and_handles_auc_edge_case(self):
+        subset = self.export.loc[self.export["price_category"] == "Budget"].head(12)
+        with patch("streamlit.file_uploader", return_value=BytesIO(subset.to_csv(index=False).encode())):
+            app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
+        app.button(key="show_model_comparison").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(subset.to_csv(index=False).encode())):
+            app.run()
+        self.assertFalse(app.exception)
+        self.assertFalse(app.error)
+        comparison = app.dataframe[0].value
+        self.assertEqual(len(comparison), 5)
+        self.assertTrue(comparison["AUC"].isna().all())
+        self.assertEqual(len(app.warning), 1)
+        for name, pipeline in self.models.items():
+            features = subset.drop(columns="price_category")
+            metrics, _ = calculate_metrics(subset["price_category"], pipeline.predict(features),
+                                            pipeline.predict_proba(features), pipeline.classes_)
+            np.testing.assert_allclose(
+                comparison.set_index("Model").loc[name, METRIC_NAMES].astype(float),
+                [metrics[metric] for metric in METRIC_NAMES], equal_nan=True,
+            )
+
+    def test_streamlit_comparison_handles_missing_model(self):
+        with patch.dict(MODEL_FILES, {"Decision Tree": "missing_model.pkl"}):
+            with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+                app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
+            app.button(key="show_model_comparison").click()
+            with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+                app.run()
+        self.assertFalse(app.exception)
+        self.assertFalse(app.error)
+        comparison = app.dataframe[0].value.set_index("Model")
+        self.assertTrue(comparison.loc["Decision Tree", METRIC_NAMES].isna().all())
+        self.assertTrue(np.isfinite(comparison.drop(index="Decision Tree")[METRIC_NAMES]).all().all())
+        self.assertTrue(any("Saved model not found" in warning.value for warning in app.warning))
 
     def test_streamlit_invalid_uploads(self):
         cases = {
@@ -152,9 +243,64 @@ class AssignmentTests(unittest.TestCase):
             with self.subTest(case=name):
                 with patch("streamlit.file_uploader", return_value=BytesIO(text.encode())):
                     app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
+                app.sidebar.radio[0].set_value("Logistic Regression")
+                app.button(key="generate_classifier").click()
+                with patch("streamlit.file_uploader", return_value=BytesIO(text.encode())):
+                    app.run()
                 self.assertFalse(app.exception)
                 self.assertTrue(app.error)
                 self.assertIn(message, app.error[0].value)
+
+    def test_classifier_selection_requires_generate(self):
+        csv_bytes = self.export.to_csv(index=False).encode()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
+        self.assertEqual(len(app.metric), 0)
+        self.assertIsNone(app.sidebar.radio[0].value)
+        app.button(key="generate_classifier").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any("Select a classifier" in warning.value for warning in app.warning))
+        app.sidebar.radio[0].set_value("Support Vector Machine")
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertEqual(len(app.metric), 0)
+        app.sidebar.radio[0].set_value("Support Vector Machine")
+        app.button(key="generate_classifier").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertEqual(app.session_state["active_classifier"], "Support Vector Machine")
+        original_metrics = [metric.value for metric in app.metric]
+        app.sidebar.radio[0].set_value("Decision Tree")
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertEqual(app.session_state["active_classifier"], "Support Vector Machine")
+        self.assertEqual([metric.value for metric in app.metric], original_metrics)
+        self.assertTrue(any(heading.value == "Evaluation Metrics: Support Vector Machine" for heading in app.subheader))
+        app.sidebar.radio[0].set_value("Decision Tree")
+        app.button(key="generate_classifier").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertEqual(app.session_state["active_classifier"], "Decision Tree")
+        self.assertTrue(any(heading.value == "Evaluation Metrics: Decision Tree" for heading in app.subheader))
+        app.button(key="show_model_comparison").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        app.sidebar.radio[0].set_value("Logistic Regression")
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertEqual(app.session_state["view"], "comparison")
+        self.assertEqual(len(app.metric), 0)
+        self.assertEqual(len(app.dataframe), 1)
+        app.sidebar.radio[0].set_value("Logistic Regression")
+        app.button(key="generate_classifier").click()
+        with patch("streamlit.file_uploader", return_value=BytesIO(csv_bytes)):
+            app.run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.session_state["view"], "classifier")
+        self.assertEqual(app.session_state["active_classifier"], "Logistic Regression")
+        self.assertEqual(len(app.metric), 6)
 
 
 if __name__ == "__main__":

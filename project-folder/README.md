@@ -156,10 +156,39 @@ Training overwrites generated artifacts reproducibly.
 python -m streamlit run app.py
 ```
 
-Select a classifier in the sidebar and upload `test_data.csv`. The application
-shows a preview, validates target labels and required raw columns, loads the
-selected local pipeline, and displays the six metrics, confusion matrix, and
-actual-versus-predicted categories. Predictions can be downloaded as a CSV.
+Upload `test_data.csv` using the uploader at the top of the sidebar, then select
+a classifier using the radio buttons and click **Generate**. Horizontal dividers
+separate the upload, classifier selection, and all-model comparison sections.
+Choosing a radio option alone does not refresh the right pane; Generate applies
+the selection. Until the first Generate, only the uploaded data preview is shown.
+Generated results include six metrics, a confusion matrix, and
+actual-versus-predicted categories. A pending selection leaves the previously
+generated results unchanged.
+
+Click **All Models' Comparison Table** in the sidebar to switch to a separate comparison-only
+view, which evaluates all five saved local pipelines on the uploaded records.
+The comparison table shows
+Model, Accuracy, AUC, Precision, Recall, F1 Score, and MCC, with a CSV download.
+These scores are calculated from the current upload, not read from the training
+comparison file. Missing models are reported explicitly and their scores remain
+unavailable; other models can still be compared.
+
+To return from comparison, select a classifier and click **Generate**.
+Comparison mode clears the previous radio selection, so the same classifier
+can be selected again. Generate without a selection shows a sidebar warning
+and leaves the current results unchanged.
+The uploaded file remains available when switching views.
+Both record tables in the classifier view include every record in a
+fixed-height scrollable view. The uploaded record count excludes the CSV header.
+
+Prediction results include the CSV row number (the first record is row 2),
+brand, RAM, storage, actual and predicted categories, a correct/incorrect result,
+and the predicted category's probability. Phone model names are also displayed
+when supplied as an optional extra column; they never become model features.
+Results can be filtered to incorrect or correct predictions. Summary counts
+refer to the entire upload, and the download always includes all predictions,
+regardless of the current filter. Probabilities are model estimates, not
+guarantees of correctness.
 
 **The app never trains or fits models.** Training is separate to preserve the
 held-out evaluation and avoid repeating training on each Streamlit interaction.
