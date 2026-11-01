@@ -36,6 +36,35 @@ def evaluate_saved_model(data, model_name):
     return pipeline, predicted, probabilities, metrics, auc_message
 
 
+def build_model_ranking(comparison):
+    ordered = comparison.sort_values(["F1 Score", "Accuracy"], ascending=False,
+                                     na_position="last", kind="stable")
+    scores = [(row["F1 Score"], row["Accuracy"]) for _, row in ordered.iterrows()
+              if pd.notna(row["F1 Score"]) and pd.notna(row["Accuracy"])]
+    rows = []
+    for _, row in ordered.iterrows():
+        if pd.isna(row["F1 Score"]) or pd.isna(row["Accuracy"]):
+            rank = None
+            justification = "Not ranked: model evaluation was unsuccessful."
+        else:
+            score = (row["F1 Score"], row["Accuracy"])
+            rank = scores.index(score) + 1
+            if scores.count(score) > 1:
+                reason = "Shared rank: identical weighted F1 and accuracy."
+            elif rank == 1:
+                reason = "Best weighted F1; accuracy breaks any F1 tie."
+            elif any(previous[0] == score[0] for previous in scores[:rank - 1]):
+                reason = "Equal weighted F1 to a higher-ranked model, but lower accuracy."
+            else:
+                reason = "Lower weighted F1 than the higher-ranked models."
+            justification = (f"{reason} Weighted F1: {score[0]:.4f}; "
+                             f"accuracy: {score[1]:.4f}.")
+        rows.append({"Rank": rank, "Model": row["Model"],
+                     "F1 Score": row["F1 Score"], "Accuracy": row["Accuracy"],
+                     "Ranking Justification": justification})
+    return pd.DataFrame(rows)
+
+
 def show_classifier():
     selected = st.session_state.get("classifier")
     if selected in MODEL_FILES:
@@ -119,6 +148,9 @@ def main():
     """, unsafe_allow_html=True)
     st.title("Smartphone Price Category Classification")
     st.write("Predict and evaluate smartphone price categories using pre-trained Machine Learning models.")
+    st.markdown("**Machine Learning Assignment 2**  \n"
+                "Submitted by **YASHWANTH B** | Student ID: **2026AJ05966**")
+    st.divider()
     st.session_state.setdefault("view", "classifier")
     st.session_state.setdefault("active_classifier", None)
     with st.sidebar:
@@ -195,8 +227,33 @@ def main():
         st.dataframe(model_comparison, hide_index=True, height=240, column_config={
             metric: st.column_config.NumberColumn(format="%.4f") for metric in METRIC_NAMES
         })
+        st.subheader("Model Ranking on Uploaded Data")
+        model_ranking = build_model_ranking(model_comparison)
+        st.markdown("""
+            <style>
+            .st-key-ranking_scroll {
+                min-width: 0;
+                max-width: 100%;
+                overflow-x: auto;
+            }
+            .st-key-ranking_scroll [data-testid="stDataFrame"] {
+                min-width: 1700px;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        with st.container(key="ranking_scroll"):
+            st.dataframe(model_ranking, hide_index=True, height=240, width=1700,
+                         key="model_ranking_table", column_config={
+                "Rank": st.column_config.NumberColumn(format="%d", width="small"),
+                "Model": st.column_config.TextColumn(width="large"),
+                "F1 Score": st.column_config.NumberColumn(format="%.4f", width="small"),
+                "Accuracy": st.column_config.NumberColumn(format="%.4f", width="small"),
+                "Ranking Justification": st.column_config.TextColumn(width=1000),
+            })
         st.download_button("Download Model Comparison", model_comparison.to_csv(index=False),
                            file_name="uploaded_model_comparison.csv", mime="text/csv")
+        st.download_button("Download Model Ranking", model_ranking.to_csv(index=False),
+                           file_name="uploaded_model_ranking.csv", mime="text/csv")
     for message in sorted(auc_messages):
         st.warning(message)
     for model_name, message in failures.items():

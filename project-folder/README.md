@@ -193,6 +193,12 @@ These scores are calculated from the current upload, not read from the training
 comparison file. Missing models are reported explicitly and their scores remain
 unavailable; other models can still be compared.
 
+Below the comparison, a ranking table lists models in ascending rank order
+(rank 1 is best), using descending weighted F1 with accuracy as the tie-breaker.
+Each row explains its position using the uploaded data's scores. Identical
+weighted F1 and accuracy receive a shared rank; unsuccessful evaluations remain
+unranked. A separate CSV download includes the ranking and justifications.
+
 To return from comparison, select a classifier and click **Generate**.
 Comparison mode clears the previous radio selection, so the same classifier
 can be selected again. Generate without a selection shows a sidebar warning

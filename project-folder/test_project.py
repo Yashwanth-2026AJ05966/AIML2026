@@ -182,13 +182,19 @@ class AssignmentTests(unittest.TestCase):
                 with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
                     app.run()
                 self.assertFalse(app.exception)
-                self.assertEqual(len(app.dataframe), 1)
+                self.assertEqual(len(app.dataframe), 2)
                 self.assertEqual(len(app.metric), 0)
                 self.assertIsNone(app.sidebar.radio[0].value)
                 self.assertFalse(any(heading.value == "Actual and Predicted Categories" for heading in app.subheader))
                 model_comparison = app.dataframe[0].value
                 self.assertEqual(list(model_comparison.columns), ["Model", *METRIC_NAMES])
                 self.assertEqual(model_comparison["Model"].tolist(), list(MODEL_FILES))
+                ranking = app.dataframe[1].value
+                expected_order = model_comparison.sort_values(
+                    ["F1 Score", "Accuracy"], ascending=False, kind="stable")
+                self.assertEqual(ranking["Model"].tolist(), expected_order["Model"].tolist())
+                self.assertEqual(ranking["Rank"].tolist(), [1, 2, 3, 4, 5])
+                self.assertTrue(ranking["Ranking Justification"].str.contains("Weighted F1").all())
                 for compared_name, compared_pipeline in self.models.items():
                     features = self.export.drop(columns="price_category")
                     expected_metrics, _ = calculate_metrics(
@@ -208,6 +214,21 @@ class AssignmentTests(unittest.TestCase):
                 self.assertEqual(len(app.metric), 6)
                 self.assertTrue(any(heading.value == f"Evaluation Metrics: {name}" for heading in app.subheader))
 
+    def test_model_ranking_ties_and_failed_evaluations(self):
+        from app import build_model_ranking
+
+        comparison = pd.DataFrame({
+            "Model": ["First", "Tied", "Lower Accuracy", "Failed"],
+            "F1 Score": [0.8, 0.8, 0.8, None],
+            "Accuracy": [0.9, 0.9, 0.7, None],
+        })
+        ranking = build_model_ranking(comparison)
+        self.assertEqual(ranking["Rank"].iloc[:3].tolist(), [1, 1, 3])
+        self.assertTrue(pd.isna(ranking["Rank"].iloc[3]))
+        self.assertIn("Shared rank", ranking["Ranking Justification"].iloc[0])
+        self.assertIn("lower accuracy", ranking["Ranking Justification"].iloc[2])
+        self.assertIn("Not ranked", ranking["Ranking Justification"].iloc[3])
+
     def test_streamlit_comparison_uses_upload_and_handles_auc_edge_case(self):
         subset = self.export.loc[self.export["price_category"] == "Budget"].head(12)
         with patch("streamlit.file_uploader", return_value=BytesIO(subset.to_csv(index=False).encode())):
@@ -220,6 +241,10 @@ class AssignmentTests(unittest.TestCase):
         comparison = app.dataframe[0].value
         self.assertEqual(len(comparison), 5)
         self.assertTrue(comparison["AUC"].isna().all())
+        ranking = app.dataframe[1].value
+        self.assertTrue(ranking["Rank"].notna().all())
+        self.assertEqual(ranking["Model"].tolist(), comparison.sort_values(
+            ["F1 Score", "Accuracy"], ascending=False, kind="stable")["Model"].tolist())
         self.assertEqual(len(app.warning), 1)
         for name, pipeline in self.models.items():
             features = subset.drop(columns="price_category")
@@ -242,6 +267,9 @@ class AssignmentTests(unittest.TestCase):
         comparison = app.dataframe[0].value.set_index("Model")
         self.assertTrue(comparison.loc["Decision Tree", METRIC_NAMES].isna().all())
         self.assertTrue(np.isfinite(comparison.drop(index="Decision Tree")[METRIC_NAMES]).all().all())
+        ranking = app.dataframe[1].value.set_index("Model")
+        self.assertTrue(pd.isna(ranking.loc["Decision Tree", "Rank"]))
+        self.assertIn("Not ranked", ranking.loc["Decision Tree", "Ranking Justification"])
         self.assertTrue(any("Saved model not found" in warning.value for warning in app.warning))
 
     def test_streamlit_invalid_uploads(self):
