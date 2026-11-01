@@ -53,13 +53,76 @@ def show_model_comparison():
 
 
 def main():
-    st.set_page_config(page_title="Smartphone Price Category Classification", layout="wide")
+    st.set_page_config(page_title="Smartphone Price Category Classification", layout="wide",
+                       initial_sidebar_state="expanded")
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] {
+            position: relative !important;
+            width: 20rem !important;
+            min-width: 20rem !important;
+            max-width: 20rem !important;
+            flex: 0 0 20rem !important;
+            transform: none !important;
+            margin-left: 0 !important;
+            visibility: visible !important;
+            display: block !important;
+            border-right: 1px solid rgba(128, 128, 128, 0.35);
+        }
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="stSidebarResizeHandle"] {
+            display: none !important;
+        }
+        [data-testid="stMain"] {
+            min-width: 0;
+        }
+        [data-testid="stFileUploader"] {
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+        @keyframes upload-glow {
+            0%, 100% { box-shadow: 0 0 4px rgba(0, 166, 125, 0.25); }
+            50% { box-shadow: 0 0 16px rgba(0, 166, 125, 0.65); }
+        }
+        @media (max-width: 700px) {
+            [data-testid="stAppViewContainer"] {
+                flex-direction: column !important;
+                overflow: auto;
+            }
+            [data-testid="stSidebar"] {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                flex: 0 0 auto !important;
+                height: auto !important;
+                border-right: none;
+                border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+            }
+            [data-testid="stSidebarContent"] {
+                height: auto !important;
+            }
+            [data-testid="stMain"] {
+                position: relative !important;
+                height: auto !important;
+                overflow: visible;
+                flex: 0 0 auto;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [data-testid="stFileUploader"] {
+                animation: none !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
     st.title("Smartphone Price Category Classification")
     st.write("Predict and evaluate smartphone price categories using pre-trained Machine Learning models.")
     st.session_state.setdefault("view", "classifier")
     st.session_state.setdefault("active_classifier", None)
     with st.sidebar:
-        uploaded_file = st.file_uploader("Upload test_data.csv", type=["csv"])
+        uploaded_file = st.file_uploader("Upload Test Data CSV", type=["csv"])
         st.divider()
         st.subheader("Classifier Selection")
         with st.form("classifier_selection", border=False):
@@ -74,6 +137,16 @@ def main():
                     help="Compare all five pre-trained models on your uploaded test CSV using "
                         "Accuracy, AUC, Precision, Recall, F1 Score, and MCC. "
                         "View the results in a separate table and download them as a CSV.")
+    if uploaded_file is None:
+        st.markdown("""
+            <style>
+            [data-testid="stFileUploader"] {
+                border-color: #00a67d;
+                box-shadow: 0 0 8px rgba(0, 166, 125, 0.4);
+                animation: upload-glow 2s ease-in-out infinite;
+            }
+            </style>
+        """, unsafe_allow_html=True)
     selected_name = st.session_state["active_classifier"]
     comparison_view = st.session_state["view"] == "comparison"
     if uploaded_file is None:

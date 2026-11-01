@@ -3,18 +3,38 @@
 ## 1. Problem Statement
 
 **Smartphone Price Category Classification Using Machine Learning** compares
-five multiclass classifiers that predict Budget, Mid-Range, Premium, or Flagship
-from smartphone specifications. This is classification, not price regression.
+five multiclass classifiers to determine how effectively smartphone specifications
+can predict a device's price segment. The objective is to assign each smartphone
+to one of four categories: Budget, Mid-Range, Premium, or Flagship. This is a
+classification task, not an attempt to predict an exact selling price.
+
+The solution uses specifications such as brand, processor, RAM, internal storage,
+battery capacity, display characteristics, camera capabilities, and connectivity.
+Price is used to construct the correct category labels but is excluded from the
+prediction features. The workflow handles missing values and mixed feature types,
+trains Logistic Regression, Decision Tree, K-Nearest Neighbors (KNN), Gaussian
+Naive Bayes, and Support Vector Machine (SVM), and compares their performance
+using six evaluation metrics on a common held-out test set.
+
+The completed project provides five reusable trained pipelines and a Streamlit
+application for uploading labelled test data, viewing predictions, inspecting
+confusion matrices, and comparing models. On the 196 held-out smartphones, SVM
+achieved the best overall results among the five models, with 81.12% accuracy
+and a weighted F1 score of 0.8089. These results demonstrate the feasibility of
+specification-based price-category classification on this dataset, while also
+showing that performance depends on the chosen learning algorithm.
 
 ## 2. Dataset Description
 
-The supplied `smartphones_cleaned_v6.csv` contains 980 records and 26 columns.
+The dataset `smartphones_cleaned_v6.csv` was downloaded from the
+[Smartphones Dataset on Kaggle](https://www.kaggle.com/datasets/informrohit1/smartphones-dataset?resource=download),
+as specified in the assignment handout PDF. It contains 980 records and 26 columns.
 It has missing specification values and no exact duplicate records. The training
 program prints dimensions, data types, missing counts, duplicates, and original
 price statistics. No incomplete specification rows are discarded.
 
-The original dataset is included unchanged. The source was the supplied CSV in
-the parent assignment directory; no synthetic records or external data were used.
+The downloaded CSV is included unchanged in the project. No synthetic records
+or additional external datasets were used.
 
 ## 3. Target Variable
 
@@ -243,19 +263,80 @@ but evaluation is meaningful only if those records were not used for training.
 
 ## 14. Model Comparison
 
-Refer to **`model_comparison.csv` after executing `train_models.py`** for the
-actual calculated results. Its columns are Model, Accuracy, AUC, Precision,
-Recall, F1 Score, and MCC. No performance scores are fabricated in this README.
+The following results were obtained by evaluating the five saved pipelines on
+all 196 held-out records in `test_data.csv`. They match the saved evaluation
+results in `model_comparison.csv` and are rounded to four decimal places.
+Precision, Recall, and F1 are weighted averages across the four categories;
+AUC is weighted multiclass one-vs-rest AUC. Accuracy is shown as a proportion.
+
+| ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Logistic Regression | 0.7857 | 0.9384 | 0.7870 | 0.7857 | 0.7836 | 0.6966 |
+| Decision Tree | 0.7449 | 0.8162 | 0.7475 | 0.7449 | 0.7436 | 0.6392 |
+| KNN | 0.8010 | 0.9209 | 0.7982 | 0.8010 | 0.7989 | 0.7188 |
+| Naive Bayes | 0.2602 | 0.7693 | 0.4898 | 0.2602 | 0.2544 | 0.1002 |
+| Support Vector Machine | 0.8112 | 0.9506 | 0.8103 | 0.8112 | 0.8089 | 0.7325 |
+
+### Observations on Model Performance
+
+| ML Model Name | Observation about model performance |
+| --- | --- |
+| Logistic Regression | A strong baseline with 78.57% accuracy and weighted F1 of 0.7836. Its AUC of 0.9384 is second only to SVM, indicating strong class-ranking performance even though its final classification accuracy is below KNN and SVM. |
+| Decision Tree | Achieved 74.49% accuracy and weighted F1 of 0.7436, below Logistic Regression, KNN, and SVM. Its AUC of 0.8162 also trails those three models. The test results alone do not establish whether the difference is caused by overfitting. |
+| KNN | The second-best model by accuracy, weighted F1, and MCC, with 80.10% accuracy and weighted F1 of 0.7989. This suggests that similarity between preprocessed smartphone specifications is useful for category prediction. Its AUC of 0.9209 is below Logistic Regression despite higher classification accuracy. |
+| Naive Bayes | The weakest model by accuracy, weighted F1, and MCC, with 26.02% accuracy, weighted F1 of 0.2544, and MCC of 0.1002. Its AUC of 0.7693 indicates some ranking ability, but its final category predictions are poor. Correlated specifications and departures from Gaussian assumptions are possible explanations, not conclusions established by these metrics. |
+| Support Vector Machine | The strongest model on this test split, leading all six reported metrics. It achieved 81.12% accuracy, AUC of 0.9506, weighted F1 of 0.8089, and MCC of 0.7325. Its default RBF kernel can represent nonlinear relationships between specifications and price categories. |
+
+**Overall winner for this dataset: Support Vector Machine (SVM).** It has the
+highest weighted F1 score, the project's primary comparison criterion, and also
+the highest accuracy, AUC, precision, recall, and MCC. KNN is the closest
+alternative by accuracy and weighted F1.
 
 This is a simple academic comparison, without extensive tuning or resampling.
-Choosing a winner on this test split is descriptive; an additional independent
-dataset would be needed for an unbiased final assessment of that selection.
+The winner is specific to this held-out split; the small difference between
+SVM and KNN is not proof of statistically significant superiority. Choosing a
+winner on this test split is descriptive; an additional independent dataset
+would be needed for an unbiased final assessment of that selection.
 
-## 15. Important Note About Data Leakage
+## 15. No Data Leakage in the Implemented Pipeline
 
-The target is derived directly from price, so retaining price would reveal the
-answer and create target leakage. Neither price, target, nor model name enters
-any fitted feature pipeline. Feature grouping, imputer statistics, scaling
-parameters, and one-hot category vocabularies are determined from training data
-only. Test rows never call `fit` or `fit_transform`, and the Streamlit app only
-predicts using saved fitted pipelines.
+**There is no target leakage or train-test preprocessing leakage in the
+implemented training and evaluation pipeline.** The following safeguards keep
+the prediction features and held-out evaluation separate:
+
+- `price` is used only to create category labels with fixed thresholds.
+  Both `price` and `price_category`, along with the phone model identifier,
+  are removed from input features before the train-test split.
+- Training labels are passed separately as `y_train` in
+  `pipeline.fit(x_train, y_train)`. This is required for supervised learning
+  and does not make the target a prediction feature.
+- Training and test rows are disjoint. Feature grouping, imputation, scaling,
+  and one-hot encoding are fitted using training rows only.
+- The held-out test rows are used only for prediction and evaluation, never
+  for fitting preprocessing or classifiers.
+- The Streamlit application loads the saved pipelines and predicts from their
+  feature columns only. Uploaded target labels are used to calculate metrics
+  and compare actual versus predicted categories, not to generate predictions.
+
+These safeguards are checked by the automated tests for split integrity,
+feature exclusion, and training-only preprocessing. The model-selection
+limitation described in Section 14 is separate from target or preprocessing
+leakage.
+
+## 16. Source Code and Application Hosting
+
+**GitHub source code:**
+
+[AIML2026 - Smartphone Price Category Classification](https://github.com/Yashwanth-2026AJ05966/AIML2026/tree/main/project-folder)
+
+The repository contains the application source, training code, dataset, saved
+models, evaluation artifacts, dependency requirements, tests, and documentation.
+
+**Live Streamlit application:**
+
+[Smartphone Price Category Classification](https://2026aj05966.streamlit.app/)
+
+Open the hosted application, upload `test_data.csv`, and select a classifier
+and click **Generate**, or click **All Models' Comparison Table** to compare
+all five models. The application can also be run locally using the instructions
+in Section 12.

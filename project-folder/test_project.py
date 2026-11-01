@@ -128,6 +128,19 @@ class AssignmentTests(unittest.TestCase):
         self.assertEqual(training_calls, [])
         self.assertIn("joblib.load", (BASE_DIR / "app.py").read_text(encoding="utf-8"))
 
+    def test_upload_highlight_tracks_file_presence(self):
+        app = AppTest.from_file(str(BASE_DIR / "app.py"), default_timeout=30).run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any("animation: upload-glow 2s" in item.value for item in app.markdown))
+        with patch("streamlit.file_uploader", return_value=BytesIO(self.export.to_csv(index=False).encode())):
+            app.run()
+        self.assertFalse(app.exception)
+        self.assertFalse(any("animation: upload-glow 2s" in item.value for item in app.markdown))
+        with patch("streamlit.file_uploader", return_value=None):
+            app.run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any("animation: upload-glow 2s" in item.value for item in app.markdown))
+
     def test_streamlit_each_model_with_uploaded_test_csv(self):
         for name in MODEL_FILES:
             with self.subTest(model=name):
